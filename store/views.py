@@ -1,8 +1,9 @@
 import datetime
 import json
 
+from django.contrib.auth import authenticate, login, logout
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import HttpResponse, redirect, render
 
 from .models import *
 from .utils import cartData, guestOrder
@@ -17,8 +18,8 @@ def store(request):
 
 	products = Product.objects.all()
 	context = {'products':products, 'cartItems':cartItems}
-	return render(request, 'store/store.html', context)
 
+	return render(request, 'store/store.html', context)
 
 def cart(request):
 	data = cartData(request)
@@ -83,7 +84,7 @@ def processOrder(request):
 	order.save()
 
 	if order.shipping == True:
-		ShippingAddress.objects.create(
+		Address.objects.create(
 		customer=customer,
 		order=order,
 		address=data['shipping']['address'],
@@ -95,8 +96,30 @@ def processOrder(request):
 	return JsonResponse('Payment submitted..', safe=False)
 
 
+def store_index(request):
+	if request.user.is_authenticated:
+		return render(request, template_name='store.html')
+	else:
+		return redirect('store_login')
+
+
+def store_login(request):
+	if request.method == 'POST':
+		username = request.POST.get('username')
+		password = request.POST.get('password')
+		user = authenticate(request, username=username, password=password)
+		if user is not None:
+			login(request, user)
+			return redirect('store')
+	return render(request, template_name='store/login.html')
+	
+def store_logout(request):
+	logout(request)
+	return redirect('store_login')
+
+
 def about(request):
-    return render(request, 'store/about.html') 
+    return render(request, 'store/about.html')
 
 def python(request):
     return render(request, 'store/courses/python.html')  
